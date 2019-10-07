@@ -1,0 +1,200 @@
+Starting new HTTPS connection (1): joev-saml.jvlcek.redhat.com:443
+https://joev-saml.jvlcek.redhat.com:443 "GET / HTTP/1.1" 200 None
+===  ECP Issues HTTP Request to Service Provider ===
+
+Request:
+  url = https://joev-saml.jvlcek.redhat.com/
+  method = GET
+  Headers:
+    Accept: text/html, application/vnd.paos+xml
+    Accept-Encoding: gzip, deflate
+    Connection: keep-alive
+    PAOS: ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"
+    User-Agent: python-requests/2.22.0
+
+Response:
+  Status = 200
+  Headers:
+    Cache-Control: private, max-age=0, must-revalidate, max-age=0, private, must-revalidate
+    Connection: Keep-Alive
+    Content-Security-Policy: default-src 'self'; connect-src 'self' wss://joev-saml.jvlcek.redhat.com; frame-src 'self'; script-src 'unsafe-eval' 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self'; report-uri /dashboard/csp_report
+    Content-Type: text/html; charset=utf-8
+    Date: Wed, 18 Sep 2019 18:08:30 GMT
+    ETag: W/"452622809c4954e186ffe7133ff03f8b"
+    Keep-Alive: timeout=5, max=100
+    Server: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips mod_auth_gssapi/1.5.1 mod_auth_kerb/5.4
+    Set-Cookie: _vmdb_session=f07b49f450bbabd663b85cc8c8035945; path=/; expires=Thu, 19 Sep 2019 18:08:30 -0000; secure; HttpOnly
+    Strict-Transport-Security: max-age=631139040
+    Transfer-Encoding: chunked
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Frame-Options: SAMEORIGIN
+    X-Permitted-Cross-Domain-Policies: none
+    X-Request-Id: 37746140-6232-40a3-aaf5-685d81685556
+    X-Runtime: 0.239082
+    X-XSS-Protection: 1; mode=block
+  Content:
+    <!DOCTYPE html>
+
+    <html class='login-pf rcue-login' lang='en'>
+    <head>
+    <title>
+    ManageIQ: Login
+    </title>
+    <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon-6ca95f7b93eeb006088db7dd238353e62eb9ad976446654600ad6d42e2d62ae2.ico" />
+    <link rel="stylesheet" media="screen" href="/assets/application-84dc0e1b01dfde6e87c957d46bece67a0e6d47d5f6d62176585d9e02f0da5fb3.css" />
+    <link rel="stylesheet" media="screen" href="/custom.css" />
+    <script src="/packs/runtime-06564b9a89992a24e3c0.js"></script>
+    <script src="/packs/shims-2bb51b1a5a438de43907.js"></script>
+    <script src="/packs/vendor-09371c3877d7b54becb4.js"></script>
+    <script src="/packs/manageiq-ui-classic/globals-5f8c91b327f31cef289b.js"></script>
+    <script src="/assets/application-18b003a125ae1c289230c0b7b35640b73eed4b83635373eaad8c4c8483ce7366.js"></script>
+    <script src="/packs/manageiq-ui-classic/application-common-5f0d41a1e918b09c55b3.js"></script>
+    <script src="/packs/manageiq-ui-classic/angular-common-04ca621168e8da7736d8.js"></script>
+    <script src="/packs/manageiq-ui-classic/component-definitions-common-c077af8fe58a4c93d046.js"></script>
+    <script src="/packs/manageiq-ui-classic/provider-dialogs-common-14f696cd946e26ad5956.js"></script>
+    <script src="/packs/manageiq-ui-classic/provisioning-actions-common-4d2dd3ca0558ae94524a.js"></script>
+    <script src="/packs/manageiq-ui-classic/toolbar-actions-common-df1cd98bdedad677c8df.js"></script>
+    <script src="/packs/manageiq-providers-lenovo/component-definitions-common-2d432b8b47fc75c9421a.js"></script>
+    <script src="/packs/manageiq-providers-nuage/component-definitions-common-fdadf8b928afc7f9d702.js"></script>
+    <script src="/packs/manageiq-providers-redfish/component-definition-common-b95deb90ef76647782e6.js"></script>
+
+    </head>
+    <body class='login'>
+    <span id='badge'>
+    <img src='/assets/layout/login-screen-logo-cd43380036fc96964823fd8d6d7486fe9bcfcce1498daf0c41d8bc94385511da.png'>
+    </span>
+    <div class='container'>
+    <div class='row'>
+    <div class='col-md-12'>
+    <div id='brand'>
+    <img alt='ManageIQ' src='/assets/layout/brand-7005158295b20605eae00a080448d69a9c7b541ee3f99469b86e1bae955b0e89.svg'>
+    </div>
+    </div>
+    <div class='col-md-6 col-lg-5 login'>
+    <div class='form-horizontal' id='login_div'>
+    <div id='notification' style='display: none;'>
+    <div id='outer'>
+    <div id='inner'>
+    <div id='spinner_div'></div>
+    </div>
+    </div>
+    </div>
+
+    <div id='invalid_sso_credentials_flash' style='display: none'>
+    <div class='flash_text_div' title='Click to remove message'>
+    <div class='alert alert-danger'>
+    <span class='pficon pficon-error-circle-o'></span>
+    <strong>Invalid Single Sign-On credentials</strong>
+    </div>
+    </div>
+    </div>
+    <div id='flash_msg_div' style='display: none'>
+    </div>
+
+    <div class='form-group'>
+    <label class='col-md-3 control-label'></label>
+    <div class='col-md-9'>
+    <a id="saml_login" class="btn btn-primary form-control" alt="Log In" title="Log In to Corporate System" data-method="post" data-miq_sparkle_on="true" data-submit="login_div" data-remote="true" href="/dashboard/initiate_saml_login?button=saml_login">Log In to Corporate System</a>
+    <div class='text-center' id='saml-login'>
+    <hr id='saml-login'>
+    &nbsp;
+    Or
+    &nbsp;
+    <hr id='saml-login'>
+    </div>
+    </div>
+    </div>
+    <div class='form-group'>
+    <label class='col-md-3 control-label'>Username</label>
+    <div class='col-md-9'>
+    <input type="text" name="user_name" id="user_name" class="form-control" placeholder="Username" onkeypress="if (miqEnterPressed(event)) miqAjaxExtAuth();" />
+    <script>
+    //<![CDATA[
+    $('#user_name').focus();
+    //]]>
+    </script>
+    </div>
+    </div>
+    <div class='form-group'>
+    <label class='col-md-3 control-label'>Password</label>
+    <div class='col-md-9'>
+    <input type="password" name="user_password" id="user_password" onkeypress="if (miqEnterPressed(event)) miqAjaxExtAuth();" autocomplete="off" placeholder="Password or Password+One-Time-Password" class="form-control" />
+    </div>
+    </div>
+    <input id='browser_name' name='browser_name' type='hidden'>
+    <input id='browser_version' name='browser_version' type='hidden'>
+    <input id='browser_os' name='browser_os' type='hidden'>
+    <input id='user_TZO' name='user_TZO' type='hidden'>
+    <div class='form-group'>
+    <div class='col-xs-8 col-md-offset-3 col-md-6'>
+    </div>
+    <div class='col-xs-4 col-md-3 submit'>
+    <a id="login" class="btn btn-primary" alt="Log In" title="Log In" onclick="miqAjaxExtAuth(); return false;" href="">Log In</a>
+    <a id="sso_login" class="btn btn-primary" alt="SSO Log In" title="SSO Log In" style="display: none;" onclick="miqAjaxAuthSso(&#39;/dashboard/kerberos_authenticate?button=sso_login&#39;); return false;" href="">SSO Log In</a>
+    </div>
+    </div>
+    </div>
+    </div>
+    <div class='col-md-6 col-lg-7 details'>
+    <p>
+    Region:
+    <span>
+    Region 0
+    </span>
+    </p>
+    <p>
+    Zone:
+    <span>
+    default
+    </span>
+    </p>
+    <p>
+    Appliance:
+    <span>
+    EVM
+    </span>
+    </p>
+    <p class='message'>
+    </p>
+    </div>
+    </div>
+    </div>
+    <script>
+      miqGetTZO();
+      miqGetBrowserInfo();
+      miqTreeClearState();
+    </script>
+    <script>
+      $(function () {
+        $('#saml_login').click();
+      });
+    </script>
+
+    <script>
+      delete localStorage['patternfly-navigation-secondary'];
+      delete localStorage['patternfly-navigation-tertiary'];
+      miqFlashClearSaved();
+      API.ws_destroy();
+    </script>
+    </body>
+    </html>
+
+jrd Error
+Traceback (most recent call last):
+  File "saml_ecp_demo.py", line 1079, in main
+    ecp.run()
+  File "saml_ecp_demo.py", line 561, in run
+    self.process_paos_request()
+  File "saml_ecp_demo.py", line 629, in process_paos_request
+    self.paos_request_xml = etree.fromstring(self.paos_request_text)
+  File "src/lxml/etree.pyx", line 3234, in lxml.etree.fromstring
+  File "src/lxml/parser.pxi", line 1876, in lxml.etree._parseMemoryDocument
+  File "src/lxml/parser.pxi", line 1757, in lxml.etree._parseDoc
+  File "src/lxml/parser.pxi", line 1068, in lxml.etree._BaseParser._parseUnicodeDoc
+  File "src/lxml/parser.pxi", line 601, in lxml.etree._ParserContext._handleParseResultDoc
+  File "src/lxml/parser.pxi", line 711, in lxml.etree._handleParseResult
+  File "src/lxml/parser.pxi", line 640, in lxml.etree._raiseParseError
+  File "<string>", line 30
+lxml.etree.XMLSyntaxError: Opening and ending tag mismatch: img line 29 and span, line 30, column 8
+Opening and ending tag mismatch: img line 29 and span, line 30, column 8 (<string>, line 30)
