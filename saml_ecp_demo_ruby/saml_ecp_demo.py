@@ -136,8 +136,7 @@ def get_xml_element_text(context_node, required, xpath_expr, description=None):
 def build_soap_fault(fault_code, fault_string, detail=None):
     'Build a SOAP Fault document and return it as a XML object.'
 
-    envelope = etree.Element(ns_name('soap','Envelope'),
-                             nsmap={'soap': NS_SOAP})
+    envelope = etree.Element(ns_name('soap','Envelope'), nsmap={'soap': NS_SOAP})
 
     body = etree.SubElement(envelope, ns_name('soap', 'Body'))
     fault = etree.SubElement(body, ns_name('soap', 'Fault'))
@@ -401,10 +400,12 @@ class ECPFlow:
 
         self.ecp_issues_request_to_sp()
         self.process_paos_request()
-        return 0 # JJV
         self.determine_idp_endpoint()
         self.build_authn_request_for_idp()
         self.send_authn_request_to_idp()
+
+        return 0 # JJV
+
         self.process_idp_response()
         self.validate_idp_response()
         self.build_sp_response()
@@ -438,7 +439,7 @@ class ECPFlow:
         LOG.info(format_http_request_response(response, self.log_categories,
                                               msg=description))
 
-        print("JJV Invoked: %s" % response.text, flush=True)
+        print("JJV response.text : %s" % response.text, flush=True)
         self.paos_request_text = response.text
 
     def process_paos_request(self):
@@ -456,80 +457,7 @@ class ECPFlow:
         self.sp_relay_state           = get_xml_element_text(self.paos_request_xml, False, '/soap:Envelope/soap:Header/ecp:RelayState')
         self.sp_authn_request_xml     = get_xml_element(self.paos_request_xml,      True,  '/soap:Envelope/soap:Body/samlp:AuthnRequest')
 
-        LOG.info(self.pretty_print_paos_request_info(self.log_categories,
-                                               description))
-
-    def jjv_saved_process_paos_request(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
-
-        '''After receiving the PAOS request from the SP we parse the XML
-         text and build a XML object in order to operate on the
-         data. The primary purpose of this step is to extract the
-         authnRequest from the PAOS request and encapsulate it in a new
-         SOAP request that can be forwarded to the IdP.
-
-         The PAOS request also contains additional information some of
-         which must be preserved for the later step when we forward the
-         IdP response back to the SP.
-
-         1. The paos:Request responseConsumerURL is preserved because
-            the ECP client MUST assure it matches the
-            ecp:Response.AssertionConsumerServiceURL returned by the
-            IdP to prevent man-in-the-middle attacks. It must also
-            match the samlp:AuthnRequest.AssertionConsumerServiceURL.
-
-         2. If the paos:Request contained a messageID it is preserved
-            so it can be returned in the subsequent
-            paos:Response.refToMessageID. This allows a provider to
-            correlate messages.
-
-         3. If a ecp:RelayState is present it is preserved because when
-            the ECP client sends the response to the SP it MUST include
-            RelayState provided in the request.
-
-         In addition we extract some pertinent information for display
-         and diagnostic purposes.'''
-
-        description = banner('Process PAOS request from SP')
-
-        self.paos_request_xml = etree.fromstring(self.paos_request_text)
-        print("JJV paos_request_xml : %s" % self.paos_request_xml, flush=True)
-
-        # PAOS Request Header Block
-        self.sp_response_consumer_url = get_xml_element_text(self.paos_request_xml, True,
-            '/soap:Envelope/soap:Header/paos:Request/@responseConsumerURL')
-        print("JJV sp_response_consumer_url : %s" % self.sp_response_consumer_url, flush=True)
-
-        self.sp_message_id = get_xml_element_text(self.paos_request_xml, False,
-            '/soap:Envelope/soap:Header/paos:Request/@messageID')
-        print("JJV sp_message_id : %s" % self.sp_message_id, flush=True)
-
-        # ECP Request Header Block
-        self.provider_name = get_xml_element_text(self.paos_request_xml, False,
-            '/soap:Envelope/soap:Header/ecp:Request/@ProviderName')
-        print("JJV provider_name : %s" % self.provider_name, flush=True)
-
-        self.sp_is_passive = get_xml_element_text(self.paos_request_xml, False,
-            '/soap:Envelope/soap:Header/ecp:Request/@IsPassive')
-        print("JJV sp_is_passive : %s" % self.sp_is_passive, flush=True)
-
-        self.sp_issuer = get_xml_element_text(self.paos_request_xml, True,
-            '/soap:Envelope/soap:Header/ecp:Request/saml:Issuer')
-        print("JJV sp_issuer : %s" % self.sp_issuer, flush=True)
-
-        # ECP RelayState Header Block
-        self.sp_relay_state = get_xml_element_text( self.paos_request_xml, False,
-            '/soap:Envelope/soap:Header/ecp:RelayState')
-        print("JJV sp_relay_state : %s" % self.sp_relay_state, flush=True)
-
-        # The AuthnRequest as an XML object
-        self.sp_authn_request_xml = get_xml_element(self.paos_request_xml, True,
-            '/soap:Envelope/soap:Body/samlp:AuthnRequest')
-        print("JJV sp_authn_request_xml : %s" % self.sp_authn_request_xml, flush=True)
-
-        LOG.info(self.pretty_print_paos_request_info(self.log_categories,
-                                               description))
-
+        LOG.info(self.pretty_print_paos_request_info(self.log_categories, description))
 
     def determine_idp_endpoint(self):
         print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
@@ -539,8 +467,7 @@ class ECPFlow:
 
         description = banner('ECP Determines Identity Provider')
 
-        LOG.info('%s\nUsing IdP endpoint: %s\n',
-                 description, self.idp_endpoint)
+        LOG.info('%s\nUsing IdP endpoint: %s\n', description, self.idp_endpoint)
 
     def build_authn_request_for_idp(self):
         print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
@@ -565,13 +492,28 @@ class ECPFlow:
 
         self.idp_request_xml = deepcopy(self.paos_request_xml)
         xpath_expr = '/soap:Envelope/soap:Header'
-        matches = self.idp_request_xml.xpath('/soap:Envelope/soap:Header',
-                                             namespaces=namespaces)
+        matches = self.idp_request_xml.xpath('/soap:Envelope/soap:Header', namespaces=namespaces)
         for element in matches:
             element.getparent().remove(element)
 
-        self.idp_request_text = etree.tostring(self.idp_request_xml)
-
+        self.idp_request_text = etree.tostring(self.idp_request_xml).decode()
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV 001 : %s self.idp_request_text ->%s<-" % (inspect.stack()[0].function, self.idp_request_text), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
+        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
 
     def send_authn_request_to_idp(self):
         print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
@@ -607,21 +549,23 @@ class ECPFlow:
             raise ValueError('unknown IdP authentication method: "%s"' %
                              self.idp_auth_method)
 
-        headers = {
-            'Content-Type': 'text/xml',
-        }
+        headers = { 'Content-Type': 'text/xml', }
 
-        response = self.session.post(self.idp_endpoint, verify=False, headers=headers,
-                                     auth=auth, data=self.idp_request_text)
+        print("JJV A01 : %s  self.idp_auth_method ->%s<-" % (inspect.stack()[0].function, self.idp_auth_method), flush=True)
+        print("JJV A02 : %s self.idp_request_text ->%s<-" % (inspect.stack()[0].function, self.idp_request_text), flush=True)
+        print("JJV A03 : %s      self.sp_resource ->%s<-" % (inspect.stack()[0].function, self.sp_resource), flush=True)
+        print("JJV A04 : %s     self.idp_endpoint ->%s<-" % (inspect.stack()[0].function, self.idp_endpoint), flush=True)
+
+        response = self.session.post(self.idp_endpoint, verify=False, headers=headers, auth=auth, data=self.idp_request_text)
 
         self.idp_response_text = response.text
 
-        LOG.info(format_http_request_response(response, self.log_categories,
-                                              description))
+        print("JJV 002 : %s self.idp_response_text\n ->%s<-" % (inspect.stack()[0].function, self.idp_response_text), flush=True)
+
+        LOG.info(format_http_request_response(response, self.log_categories, description))
 
         if 'saml-message' in self.log_categories:
-            LOG.info('SOAP message from ECP to IdP\n%s' %
-                     format_xml_from_object(self.idp_request_xml))
+            LOG.info('SOAP message from ECP to IdP\n%s' % format_xml_from_object(self.idp_request_xml))
 
     def process_idp_response(self):
         print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
