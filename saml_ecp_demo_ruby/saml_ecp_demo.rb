@@ -96,10 +96,10 @@ module EcpDemo
         determine_idp_endpoint
         build_authn_request_for_idp
         send_authn_request_to_idp
+        process_idp_response
 
         return 1 # JJV
 
-        process_idp_response
         validate_idp_response
         build_sp_response
         send_sp_response
@@ -143,7 +143,6 @@ module EcpDemo
     def build_authn_request_for_idp
         puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
 
-
         @idp_request_xml = @paos_request_xml.dup
         xpath_expr = '/soap:Envelope/soap:Header'
         matches = @idp_request_xml.xpath(xpath_expr, NAMESPACES)
@@ -160,7 +159,6 @@ module EcpDemo
         puts "\n=== ECP sends <AuthnRequest> to IdP with authentication ==="
 
         request = Net::HTTP::Post.new(@idp_endpoint)
-        require 'pry'; binding.pry # JJV
 
         request["Content-Type"] = "text/xml"
         request.basic_auth(@user, @password)
@@ -168,7 +166,6 @@ module EcpDemo
 
         response = @idp_endpoint_http.request(request)
 
-        require 'pry'; binding.pry # JJV
         @idp_response_text = response.body
 
         puts "SOAP message from ECP to IdP\n ->#{@idp_response_text}<-"
@@ -176,6 +173,33 @@ module EcpDemo
 
     def process_idp_response
         puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+        puts "\n=== Processed response from IdP ==="
+
+        @idp_response_xml = Nokogiri.XML(idp_response_text)
+
+
+        @idp_request_authenticated = get_xml_element(@idp_response_xml, false, '/soap:Envelope/soap:Header/ecp:RequestAuthenticated')
+        @idp_request_authenticated = false if @idp_request_authenticated.nil?
+
+        @idp_saml_response_xml =     get_xml_element(@idp_response_xml, true, '/soap:Envelope/soap:Body/samlp:Response')
+        ecp_response =               get_xml_element(@idp_response_xml, true, '/soap:Envelope/soap:Header/ecp:Response')
+
+        validate_soap_attrs(ecp_response, 'IdP to ECP messge, ecp:Response')
+
+
+        @idp_assertion_consumer_url =      get_xml_element_text(ecp_response, true, './@AssertionConsumerServiceURL')
+
+        @idp_saml_response_status_code =   get_xml_element_text(@idp_saml_response_xml, true, './samlp:Status/samlp:StatusCode/@Value')
+        @idp_saml_response_status_code2 =  get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value')
+        @idp_saml_response_status_msg =    get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusMessage')
+        @idp_saml_response_status_detail = get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusDetail')
+
+        require 'pry'; binding.pry # JJV
+
+        # JJV START HERE print("JJV 002 : %s @format_idp_response_info\n ->%s<-" % (inspect.stack()[0].function, self.format_idp_response_info(self.log_categories, description)), flush=true)
+        # JJV START HERE LOG.info(self.format_idp_response_info(self.log_categories, description))
+
+        puts "JJV 9.9 #{File.basename(__FILE__)} / #{__method__}"
     end
 
     def validate_idp_response
@@ -224,7 +248,20 @@ module EcpDemo
       puts "sp_relay_state           ->#{sp_relay_state}<-"
       puts "sp_authn_request_xml     ->#{sp_authn_request_xml}<-"
       puts "=== End Log PAOS request from SP ===\n"
+    end
 
+    def validate_soap_attrs(node, description)
+      puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+
+      soap_actor = get_xml_element_text(node, false, './@soap:actor')
+      require 'pry'; binding.pry # JJV
+      raise EcpFlowError, "#{description} is missing required soap:actor attribute" if soap_actor.nil?
+      raise EcpFlowError, "#{description} %s has invalid soap:actor value: #{soap_actor}, expecting #{SOAP_ACTOR}" if soap_actor != SOAP_ACTOR
+
+      soap_must_understand = get_xml_element_text(node, false, './@soap:mustUnderstand')
+      require 'pry'; binding.pry # JJV
+      raise EcpFlowError, "#{description} is missing required soap:mustUnderstand attribute" if soap_must_understand.nil?
+      raise EcpFlowError, "#{description} has invalid soap:actor value: #{soap_must_understand}, expecting #{SOAP_MUST_UNDERSTAND}" if soap_must_understand != SOAP_MUST_UNDERSTAND
     end
   end
 end

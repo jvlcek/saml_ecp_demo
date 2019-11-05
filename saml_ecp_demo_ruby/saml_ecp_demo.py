@@ -344,16 +344,11 @@ class ECPFlow:
             if 'message-info' in log_categories:
                 buf.write('IdP SOAP Response Info:\n')
 
-                buf.write('  SAML Status Code: %s\n' %
-                          self.idp_saml_response_status_code)
-                buf.write('  SAML Status Code 2: %s\n' %
-                          self.idp_saml_response_status_code2)
-                buf.write('  SAML Status Message: %s\n' %
-                          self.idp_saml_response_status_msg)
-                buf.write('  SAML Status Detail: %s\n' %
-                          self.idp_saml_response_status_detail)
-                buf.write('  idp_assertion_consumer_url: %s\n' %
-                          self.idp_assertion_consumer_url)
+                buf.write('  SAML Status Code: %s\n' % self.idp_saml_response_status_code)
+                buf.write('  SAML Status Code 2: %s\n' % self.idp_saml_response_status_code2)
+                buf.write('  SAML Status Message: %s\n' % self.idp_saml_response_status_msg)
+                buf.write('  SAML Status Detail: %s\n' % self.idp_saml_response_status_detail)
+                buf.write('  idp_assertion_consumer_url: %s\n' % self.idp_assertion_consumer_url)
                 buf.write('  idp_request_authenticated: %s\n' % self.idp_request_authenticated)
                 if 'saml-message' in log_categories:
                     xml_text = format_xml_from_object(self.idp_saml_response_xml)
@@ -403,10 +398,10 @@ class ECPFlow:
         self.determine_idp_endpoint()
         self.build_authn_request_for_idp()
         self.send_authn_request_to_idp()
+        self.process_idp_response()
 
         return 0 # JJV
 
-        self.process_idp_response()
         self.validate_idp_response()
         self.build_sp_response()
         self.send_sp_response()
@@ -497,23 +492,6 @@ class ECPFlow:
             element.getparent().remove(element)
 
         self.idp_request_text = etree.tostring(self.idp_request_xml).decode()
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV BLA BLA BLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV 001 : %s self.idp_request_text ->%s<-" % (inspect.stack()[0].function, self.idp_request_text), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
-        print("JJV FLA FLA FLA %s" % (inspect.stack()[0].function), flush=True)
 
     def send_authn_request_to_idp(self):
         print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
@@ -551,16 +529,9 @@ class ECPFlow:
 
         headers = { 'Content-Type': 'text/xml', }
 
-        print("JJV A01 : %s  self.idp_auth_method ->%s<-" % (inspect.stack()[0].function, self.idp_auth_method), flush=True)
-        print("JJV A02 : %s self.idp_request_text ->%s<-" % (inspect.stack()[0].function, self.idp_request_text), flush=True)
-        print("JJV A03 : %s      self.sp_resource ->%s<-" % (inspect.stack()[0].function, self.sp_resource), flush=True)
-        print("JJV A04 : %s     self.idp_endpoint ->%s<-" % (inspect.stack()[0].function, self.idp_endpoint), flush=True)
-
         response = self.session.post(self.idp_endpoint, verify=False, headers=headers, auth=auth, data=self.idp_request_text)
 
         self.idp_response_text = response.text
-
-        print("JJV 002 : %s self.idp_response_text\n ->%s<-" % (inspect.stack()[0].function, self.idp_response_text), flush=True)
 
         LOG.info(format_http_request_response(response, self.log_categories, description))
 
@@ -587,41 +558,31 @@ class ECPFlow:
         self.idp_response_xml = etree.fromstring(self.idp_response_text)
 
         # ECP Response Header Block
-        xpath_expr = '/soap:Envelope/soap:Header/ecp:Response'
-        ecp_response = get_xml_element(self.idp_response_xml, True, xpath_expr)
+        self.idp_request_authenticated =       get_xml_element(self.idp_response_xml, False, '/soap:Envelope/soap:Header/ecp:RequestAuthenticated') is not None
+        self.idp_saml_response_xml =           get_xml_element(self.idp_response_xml, True, '/soap:Envelope/soap:Body/samlp:Response')
+        ecp_response =                         get_xml_element(self.idp_response_xml, True, '/soap:Envelope/soap:Header/ecp:Response')
+
+        print("JJV 001 : %s self.idp_request_authenticated\n ->%s<-" % (inspect.stack()[0].function, self.idp_request_authenticated), flush=True)
+        print("JJV 002 : %s self.idp_saml_response_xml\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_xml), flush=True)
+        print("JJV 003 : %s ecp_response\n ->%s<-" % (inspect.stack()[0].function, ecp_response), flush=True)
+
         self.validate_soap_attrs(ecp_response, 'IdP to ECP messge, ecp:Response')
+        self.idp_assertion_consumer_url =      get_xml_element_text(ecp_response, True, './@AssertionConsumerServiceURL')
 
-        xpath_expr = './@AssertionConsumerServiceURL'
-        self.idp_assertion_consumer_url = get_xml_element_text(
-            ecp_response, True, xpath_expr)
+        self.idp_saml_response_status_code =   get_xml_element_text(self.idp_saml_response_xml, True, './samlp:Status/samlp:StatusCode/@Value')
+        self.idp_saml_response_status_code2 =  get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value')
+        self.idp_saml_response_status_msg =    get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusMessage')
+        self.idp_saml_response_status_detail = get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusDetail')
 
-        # ECP RequestAuthenticated Header Block
-        xpath_expr = '/soap:Envelope/soap:Header/ecp:RequestAuthenticated'
-        self.idp_request_authenticated = get_xml_element(
-            self.idp_response_xml, False, xpath_expr) is not None
+        print("JJV 004 : %s self.idp_saml_response_status_code\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_code), flush=True)
+        print("JJV 005 : %s self.idp_saml_response_status_code2\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_code2), flush=True)
+        print("JJV 005 : %s self.idp_saml_response_status_msg\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_msg), flush=True)
+        print("JJV 005 : %s self.idp_saml_response_status_detail\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_detail), flush=True)
 
-        # Get SAML Response)
-        self.idp_saml_response_xml = get_xml_element(self.idp_response_xml, True,
-                                                 '/soap:Envelope/soap:Body/samlp:Response')
+        print("JJV END : %s " % (inspect.stack()[0].function), flush=True)
+        # JJV print("JJV 002 : %s self.format_idp_response_info\n ->%s<-" % (inspect.stack()[0].function, self.format_idp_response_info(self.log_categories, description)), flush=True)
 
-        self.idp_saml_response_status_code = get_xml_element_text(
-            self.idp_saml_response_xml,
-            True, './samlp:Status/samlp:StatusCode/@Value')
-
-        self.idp_saml_response_status_code2 = get_xml_element_text(
-            self.idp_saml_response_xml,
-            False, './samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value')
-
-        self.idp_saml_response_status_msg = get_xml_element_text(
-            self.idp_saml_response_xml,
-            False, './samlp:Status/samlp:StatusMessage')
-
-        self.idp_saml_response_status_detail = get_xml_element_text(
-            self.idp_saml_response_xml,
-            False, './samlp:Status/samlp:StatusDetail')
-
-        LOG.info(self.format_idp_response_info(self.log_categories,
-                                               description))
+        LOG.info(self.format_idp_response_info(self.log_categories, description))
 
     def validate_idp_response(self):
         print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
