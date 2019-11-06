@@ -562,10 +562,6 @@ class ECPFlow:
         self.idp_saml_response_xml =           get_xml_element(self.idp_response_xml, True, '/soap:Envelope/soap:Body/samlp:Response')
         ecp_response =                         get_xml_element(self.idp_response_xml, True, '/soap:Envelope/soap:Header/ecp:Response')
 
-        print("JJV 001 : %s self.idp_request_authenticated\n ->%s<-" % (inspect.stack()[0].function, self.idp_request_authenticated), flush=True)
-        print("JJV 002 : %s self.idp_saml_response_xml\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_xml), flush=True)
-        print("JJV 003 : %s ecp_response\n ->%s<-" % (inspect.stack()[0].function, ecp_response), flush=True)
-
         self.validate_soap_attrs(ecp_response, 'IdP to ECP messge, ecp:Response')
         self.idp_assertion_consumer_url =      get_xml_element_text(ecp_response, True, './@AssertionConsumerServiceURL')
 
@@ -574,13 +570,7 @@ class ECPFlow:
         self.idp_saml_response_status_msg =    get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusMessage')
         self.idp_saml_response_status_detail = get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusDetail')
 
-        print("JJV 004 : %s self.idp_saml_response_status_code\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_code), flush=True)
-        print("JJV 005 : %s self.idp_saml_response_status_code2\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_code2), flush=True)
-        print("JJV 005 : %s self.idp_saml_response_status_msg\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_msg), flush=True)
-        print("JJV 005 : %s self.idp_saml_response_status_detail\n ->%s<-" % (inspect.stack()[0].function, self.idp_saml_response_status_detail), flush=True)
-
-        print("JJV END : %s " % (inspect.stack()[0].function), flush=True)
-        # JJV print("JJV 002 : %s self.format_idp_response_info\n ->%s<-" % (inspect.stack()[0].function, self.format_idp_response_info(self.log_categories, description)), flush=True)
+        print("JJV 002 : %s self.format_idp_response_info\n ->%s<-" % (inspect.stack()[0].function, self.format_idp_response_info(self.log_categories, description)), flush=True)
 
         LOG.info(self.format_idp_response_info(self.log_categories, description))
 
