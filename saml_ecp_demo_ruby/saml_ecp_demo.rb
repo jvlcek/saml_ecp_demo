@@ -91,18 +91,18 @@ module EcpDemo
     end
 
     def run
-        ecp_issues_request_to_sp
-        process_paos_request
-        determine_idp_endpoint
-        build_authn_request_for_idp
-        send_authn_request_to_idp
-        process_idp_response
+      ecp_issues_request_to_sp
+      process_paos_request
+      determine_idp_endpoint
+      build_authn_request_for_idp
+      send_authn_request_to_idp
+      process_idp_response
+      validate_idp_response
+      build_sp_response
 
-        return 1 # JJV
+      return 1 # JJV
 
-        validate_idp_response
-        build_sp_response
-        send_sp_response
+      send_sp_response
     end
 
     def ecp_issues_request_to_sp
@@ -120,7 +120,9 @@ module EcpDemo
     def process_paos_request
       puts "\n=== Process PAOS request from SP ==="
 
-      @paos_request_xml = Nokogiri.XML(paos_request_text)
+      puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__} @paos_request_text ->#{@paos_request_text}<-"
+
+      @paos_request_xml = Nokogiri.XML(@paos_request_text)
 
       @sp_response_consumer_url = get_xml_element_text(paos_request_xml, true,  '/soap:Envelope/soap:Header/paos:Request/@responseConsumerURL')
       @sp_message_id            = get_xml_element_text(paos_request_xml, false, '/soap:Envelope/soap:Header/paos:Request/@messageID')
@@ -134,70 +136,156 @@ module EcpDemo
     end
 
     def determine_idp_endpoint
-        puts "\n=== ECP Determines Identity Provider ==="
-        puts "    STUB. For now use value passed on the command line."
+      puts "\n=== ECP Determines Identity Provider ==="
+      puts "    STUB. For now use value passed on the command line."
 
-        puts "Using IdP endpoint: ->#{idp_endpoint}<-"
+      puts "Using IdP endpoint: ->#{idp_endpoint}<-"
     end
 
     def build_authn_request_for_idp
-        puts "\n=== Build Authn Requst For Idp by removing Header from PAOS SOAP envelope ==="
+      puts "\n=== Build Authn Requst For Idp by removing Header from PAOS SOAP envelope ==="
 
-        @idp_request_xml = @paos_request_xml.dup
-        xpath_expr = '/soap:Envelope/soap:Header'
-        matches = @idp_request_xml.xpath(xpath_expr, NAMESPACES)
+      @idp_request_xml = @paos_request_xml.dup
+      xpath_expr = '/soap:Envelope/soap:Header'
+      matches = @idp_request_xml.xpath(xpath_expr, NAMESPACES)
 
-        # matches.each { |e| e.remove }
-        matches.each(&:remove)
+      # matches.each { |e| e.remove }
+      matches.each(&:remove)
 
-        @idp_request_text = @idp_request_xml.inner_html.encode('utf-8')
+      @idp_request_text = @idp_request_xml.inner_html.encode('utf-8')
     end
 
     def send_authn_request_to_idp
-        puts "\n=== ECP sends <AuthnRequest> to IdP with authentication ==="
+      puts "\n=== ECP sends <AuthnRequest> to IdP with authentication ==="
 
-        request = Net::HTTP::Post.new(@idp_endpoint)
+      request = Net::HTTP::Post.new(@idp_endpoint)
 
-        request["Content-Type"] = "text/xml"
-        request.basic_auth(@user, @password)
-        request.body = @idp_request_text
+      request["Content-Type"] = "text/xml"
+      request.basic_auth(@user, @password)
+      request.body = @idp_request_text
 
-        response = @idp_endpoint_http.request(request)
+      response = @idp_endpoint_http.request(request)
 
-        @idp_response_text = response.body
+      @idp_response_text = response.body
 
-        puts "SOAP message from ECP to IdP\n ->#{@idp_response_text}<-"
+      puts "SOAP message from ECP to IdP\n ->#{@idp_response_text}<-"
     end
 
     def process_idp_response
-        puts "\n=== Processed response from IdP ==="
+      puts "\n=== Processed response from IdP ==="
 
-        @idp_response_xml = Nokogiri.XML(idp_response_text)
+      @idp_response_xml = Nokogiri.XML(idp_response_text)
 
-        @idp_request_authenticated = get_xml_element(@idp_response_xml, false, '/soap:Envelope/soap:Header/ecp:RequestAuthenticated')
-        @idp_request_authenticated = false if @idp_request_authenticated.nil?
+      @idp_request_authenticated = get_xml_element(@idp_response_xml, false, '/soap:Envelope/soap:Header/ecp:RequestAuthenticated')
+      @idp_request_authenticated = false if @idp_request_authenticated.nil?
 
-        @idp_saml_response_xml =     get_xml_element(@idp_response_xml, true, '/soap:Envelope/soap:Body/samlp:Response')
-        ecp_response =               get_xml_element(@idp_response_xml, true, '/soap:Envelope/soap:Header/ecp:Response')
+      @idp_saml_response_xml =     get_xml_element(@idp_response_xml, true, '/soap:Envelope/soap:Body/samlp:Response')
+      ecp_response =               get_xml_element(@idp_response_xml, true, '/soap:Envelope/soap:Header/ecp:Response')
 
-        validate_soap_attrs(ecp_response, 'IdP to ECP messge, ecp:Response')
+      validate_soap_attrs(ecp_response, 'IdP to ECP messge, ecp:Response')
 
-        @idp_assertion_consumer_url =      get_xml_element_text(ecp_response, true, './@AssertionConsumerServiceURL')
+      @idp_assertion_consumer_url =      get_xml_element_text(ecp_response, true, './@AssertionConsumerServiceURL')
 
-        @idp_saml_response_status_code =   get_xml_element_text(@idp_saml_response_xml, true, './samlp:Status/samlp:StatusCode/@Value')
-        @idp_saml_response_status_code2 =  get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value')
-        @idp_saml_response_status_msg =    get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusMessage')
-        @idp_saml_response_status_detail = get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusDetail')
+      @idp_saml_response_status_code =   get_xml_element_text(@idp_saml_response_xml, true, './samlp:Status/samlp:StatusCode/@Value')
+      @idp_saml_response_status_code2 =  get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusCode/samlp:StatusCode/@Value')
+      @idp_saml_response_status_msg =    get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusMessage')
+      @idp_saml_response_status_detail = get_xml_element_text(@idp_saml_response_xml, false, './samlp:Status/samlp:StatusDetail')
 
-        puts_idp_response_info(@log_categories, __method__)
+      puts_idp_response_info(@log_categories, __method__)
     end
 
     def validate_idp_response
-        puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+      puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+
+      if (@sp_response_consumer_url != @idp_assertion_consumer_url)
+        puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__} @sp_response_consumer_url != @idp_assertion_consumer_url"
+
+        err_msg = "SP responseConsumerURL MUST match IdP AssertionConsumerServiceURL but responseConsumerURL=#{@sp_response_consumer_url} AssertionConsumerServiceURL=#{ @idp_assertion_consumer_url}"
+        @sp_response_xml = build_soap_fault('server', 'invalid response', err_msg)
+        return false
+      end
+
+      puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__} @sp_response_consumer_url == @idp_assertion_consumer_url"
+      true
     end
 
     def build_sp_response
         puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+
+        return unless @sp_response_xml.nil?
+
+        nsmap = @idp_response_xml.namespaces
+
+        puts "JJV 001 #{File.basename(__FILE__)} / #{__method__} nsmap \n#{nsmap}"
+
+
+        # Add the namespaces we might insert into the response so they have
+        # a human readable name instead of anonymous indexed prefixes
+        nsmap['xmlns:paos'] = NS_PAOS
+        nsmap['xmlns:ecp'] = NS_ECP
+        soap_ns = nsmap.detect { |n,v| v == NS_SOAP}.first.gsub("xmlns:","")
+
+        require 'pry'; binding.pry # JJV
+
+        puts "JJV 002 #{File.basename(__FILE__)} / #{__method__} nsmap \n#{nsmap}"
+
+        builder = Nokogiri::XML::Builder.new do |xml| 
+          xml[soap_ns].Envelope(nsmap) { |envelope|
+            envelope[soap_ns].Header { |header|
+              if @sp_message_id
+                header["paos"].Response("#{soap_ns}:actor" => SOAP_ACTOR,
+                                        "#{soap_ns}:mustUnderstand" => SOAP_MUST_UNDERSTAND,
+                                        "paos:refToMessageID" => @sp_message_id)
+              end
+              if @sp_relay_state
+                header["ecp"].RelayState(@sp_relay_state,
+                                         "#{soap_ns}:actor" => SOAP_ACTOR,
+                                         "#{soap_ns}:mustUnderstand" => SOAP_MUST_UNDERSTAND)
+              end
+            } 
+          } 
+        end  
+
+        puts builder.to_xml
+
+        require 'pry'; binding.pry # JJV
+
+        puts builder.to_xml
+
+=begin
+        builder = Nokogiri::XML::Builder.new do |xml| 
+          xml['SOAP-ENV'].Envelope("xmlns:SOAP-ENV" => nsmap_str)
+          xml['SOAP-ENV'].Envelope("xmlns:SOAP-ENV" => nsmap_str)
+        end  
+
+        envelope = etree.Element(ns_name('soap','Envelope'), nsmap=nsmap)
+
+        # Do we have to add SOAP header blocks to the response?
+        if self.sp_message_id or self.sp_relay_state:
+            header = etree.SubElement(envelope, ns_name('soap', 'Header'))
+
+            # Add the <paos:Response> header block
+            if self.sp_message_id:
+                paos_response = etree.SubElement(header, ns_name('paos', 'Response'))
+                paos_response.set(ns_name('soap', 'actor'), SOAP_ACTOR)
+                paos_response.set(ns_name('soap', 'mustUnderstand'), SOAP_MUST_UNDERSTAND)
+                paos_response.set(ns_name('paos', 'refToMessageID'), self.sp_message_id)
+
+            # Add the <ecp:RelayState> header block
+            if self.sp_relay_state:
+                ecp_relay_state = etree.SubElement(header, ns_name('ecp', 'RelayState'))
+                ecp_relay_state.set(ns_name('soap', 'actor'), SOAP_ACTOR)
+                ecp_relay_state.set(ns_name('soap', 'mustUnderstand'), SOAP_MUST_UNDERSTAND)
+                ecp_relay_state.text = self.sp_relay_state
+
+        # Add the SOAP body received from the IdP to our response
+        body = etree.SubElement(envelope, ns_name('soap', 'Body'))
+        body.append(self.idp_saml_response_xml)
+
+        self.sp_response_xml = envelope
+=end
+      puts "JoeV is the coolest"
+
     end
 
     def send_sp_response
@@ -205,6 +293,26 @@ module EcpDemo
     end
 
     private
+
+    def build_soap_fault(fault_code, fault_string, detail=nil)
+      puts "\n=== Build a SOAP Fault document and return it as a XML object. ==="
+
+      builder = Nokogiri::XML::Builder.new { |xml|
+        xml['soap'].Envelope("xmlns:soap" => NS_SOAP) { |envelope|
+          envelope['soap'].Body { |body|
+            body['soap'].Fault { |fault|
+              fault.faultcode("soap:#{fault_code}")
+              fault.faultstring(fault_string)
+              fault.detail(detail) unless detail.nil?
+            }
+          }
+        }
+      }
+
+      builder_xml = builder.to_xml.gsub!("soap:faultcode", "faultcode").gsub!("soap:faultstring", "faultstring").gsub!("soap:detail", "detail")
+
+      return Nokogiri::XML(builder_xml)
+    end
 
     def get_xml_element(context_node, required, xpath_expr)
       matches = context_node.xpath(xpath_expr, NAMESPACES)

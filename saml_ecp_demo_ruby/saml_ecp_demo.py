@@ -134,6 +134,13 @@ def get_xml_element_text(context_node, required, xpath_expr, description=None):
     return data
 
 def build_soap_fault(fault_code, fault_string, detail=None):
+    '''
+    print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
+    print("JJV P01 : %s fault_code: ->%s<-"   % (inspect.stack()[0].function, fault_code),   flush=True)
+    print("JJV P01 : %s fault_string: ->%s<-" % (inspect.stack()[0].function, fault_string), flush=True)
+    print("JJV P01 : %s detail: ->%s<-"       % (inspect.stack()[0].function, detail),       flush=True)
+    '''
+
     'Build a SOAP Fault document and return it as a XML object.'
 
     envelope = etree.Element(ns_name('soap','Envelope'), nsmap={'soap': NS_SOAP})
@@ -147,9 +154,24 @@ def build_soap_fault(fault_code, fault_string, detail=None):
     fs = etree.SubElement(fault, 'faultstring')
     fs.text = fault_string
 
+    '''
+    print("\nJJV A01 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
+    print("JJV A02 : %s body:     ->%s<-" % (inspect.stack()[0].function, body), flush=True)
+    print("JJV A03 : %s fault:    ->%s<-" % (inspect.stack()[0].function, fault), flush=True)
+    print("JJV A04 : %s fc:       ->%s<-" % (inspect.stack()[0].function, fc), flush=True)
+    print("JJV A05 : %s fc.text:  ->%s<-" % (inspect.stack()[0].function, fc.text), flush=True)
+    print("JJV A06 : %s fs:       ->%s<-" % (inspect.stack()[0].function, fs), flush=True)
+    print("JJV A07 : %s fs.text:  ->%s<-" % (inspect.stack()[0].function, fs.text), flush=True)
+    '''
+
     if detail:
         d = etree.SubElement(fault, 'detail')
         d.text = detail
+        '''
+        print("JJV A08 : %s d.text\n ->%s<-" % (inspect.stack()[0].function, d.text), flush=True)
+
+        print("JJV A08 : %s envelope  ->\n%s<-" % (inspect.stack()[0].function, etree.tostring(envelope, encoding='unicode', pretty_print=True)), flush=True)
+        '''
 
     return envelope
 
@@ -399,11 +421,11 @@ class ECPFlow:
         self.build_authn_request_for_idp()
         self.send_authn_request_to_idp()
         self.process_idp_response()
+        self.validate_idp_response()
+        self.build_sp_response()
 
         return 0 # JJV
 
-        self.validate_idp_response()
-        self.build_sp_response()
         self.send_sp_response()
 
     def ecp_issues_request_to_sp(self):
@@ -434,7 +456,7 @@ class ECPFlow:
         LOG.info(format_http_request_response(response, self.log_categories,
                                               msg=description))
 
-        print("JJV response.text : %s" % response.text, flush=True)
+        # print("JJV response.text : %s" % response.text, flush=True)
         self.paos_request_text = response.text
 
     def process_paos_request(self):
@@ -570,7 +592,7 @@ class ECPFlow:
         self.idp_saml_response_status_msg =    get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusMessage')
         self.idp_saml_response_status_detail = get_xml_element_text(self.idp_saml_response_xml, False, './samlp:Status/samlp:StatusDetail')
 
-        print("JJV 002 : %s self.format_idp_response_info\n ->%s<-" % (inspect.stack()[0].function, self.format_idp_response_info(self.log_categories, description)), flush=True)
+        # print("JJV 002 : %s self.format_idp_response_info\n ->%s<-" % (inspect.stack()[0].function, self.format_idp_response_info(self.log_categories, description)), flush=True)
 
         LOG.info(self.format_idp_response_info(self.log_categories, description))
 
@@ -587,15 +609,22 @@ class ECPFlow:
         fails the ECP client sends a SOAP Fault message to the SP
         instead of a PAOS response.        '''
 
+        '''
+        print("JJV 002 : %s self.sp_response_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.sp_response_consumer_url), flush=True)
+        print("JJV 003 : %s self.idp_assertion_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.idp_assertion_consumer_url), flush=True)
+        self.idp_assertion_consumer_url = "https://joev-saml/samlbad/paosResponse"
+        print("JJV 004 : %s self.sp_response_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.sp_response_consumer_url), flush=True)
+        print("JJV 005 : %s self.idp_assertion_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.idp_assertion_consumer_url), flush=True)
+        '''
         if (self.sp_response_consumer_url != self.idp_assertion_consumer_url):
-            err_msg = (
-                'SP responseConsumerURL MUST match IdP AssertionConsumerServiceURL '
-                'but responseConsumerURL="%s" AssertionConsumerServiceURL="%s"' %
+            # print("JJV Invoked: %s self.sp_response_consumer_url != self.idp_assertion_consumer_url" % inspect.stack()[0].function, flush=True)
+            err_msg = ( 'SP responseConsumerURL MUST match IdP AssertionConsumerServiceURL but responseConsumerURL="%s" AssertionConsumerServiceURL="%s"' %
                 (self.sp_response_consumer_url, self.idp_assertion_consumer_url))
-            self.sp_response_xml = build_soap_fault('server',
-                                                    'invalid response',
-                                                    err_msg)
+
+            self.sp_response_xml = build_soap_fault('server', 'invalid response', err_msg)
             return False
+
+        # print("JJV Invoked: %s self.sp_response_consumer_url == self.idp_assertion_consumer_url" % inspect.stack()[0].function, flush=True)
         return True
 
     def build_sp_response(self):
@@ -645,36 +674,46 @@ class ECPFlow:
         # a human readable name instead of anonymous indexed prefixes
         nsmap['paos'] = NS_PAOS
         nsmap['ecp'] = NS_ECP
-        envelope = etree.Element(ns_name('soap','Envelope'),
-                                    nsmap=nsmap)
+
+        print("\nJJV A01 : %s nsmap: ->%s<-" % (inspect.stack()[0].function, nsmap), flush=True)
+        envelope = etree.Element(ns_name('soap','Envelope'), nsmap=nsmap)
+        print("\nJJV A01 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
+
 
         # Do we have to add SOAP header blocks to the response?
         if self.sp_message_id or self.sp_relay_state:
             header = etree.SubElement(envelope, ns_name('soap', 'Header'))
+            print("\nJJV A10 : %s header: ->%s<-" % (inspect.stack()[0].function, etree.tostring(header)), flush=True)
+            print("\nJJV A10.1 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
+
 
             # Add the <paos:Response> header block
             if self.sp_message_id:
                 paos_response = etree.SubElement(header, ns_name('paos', 'Response'))
-                paos_response.set(ns_name('soap', 'actor'),
-                                 SOAP_ACTOR)
-                paos_response.set(ns_name('soap', 'mustUnderstand'),
-                                 SOAP_MUST_UNDERSTAND)
-                paos_response.set(ns_name('paos', 'refToMessageID'),
-                                 self.sp_message_id)
+                paos_response.set(ns_name('soap', 'actor'), SOAP_ACTOR)
+                paos_response.set(ns_name('soap', 'mustUnderstand'), SOAP_MUST_UNDERSTAND)
+                paos_response.set(ns_name('paos', 'refToMessageID'), self.sp_message_id)
+                print("\nJJV A11 : %s paos_response: ->%s<-" % (inspect.stack()[0].function, etree.tostring(paos_response)), flush=True)
+                print("\nJJV A11.1 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
+
+                return # JJV
 
             # Add the <ecp:RelayState> header block
             if self.sp_relay_state:
                 ecp_relay_state = etree.SubElement(header, ns_name('ecp', 'RelayState'))
-                ecp_relay_state.set(ns_name('soap', 'actor'),
-                                 SOAP_ACTOR)
-                ecp_relay_state.set(ns_name('soap', 'mustUnderstand'),
-                                 SOAP_MUST_UNDERSTAND)
+                ecp_relay_state.set(ns_name('soap', 'actor'), SOAP_ACTOR)
+                ecp_relay_state.set(ns_name('soap', 'mustUnderstand'), SOAP_MUST_UNDERSTAND)
                 ecp_relay_state.text = self.sp_relay_state
+                print("\nJJV A12 : %s ecp_relay_state: ->%s<-" % (inspect.stack()[0].function, etree.tostring(ecp_relay_state)), flush=True)
 
         # Add the SOAP body received from the IdP to our response
         body = etree.SubElement(envelope, ns_name('soap', 'Body'))
+        print("\nJJV A13 : %s body: ->%s<-" % (inspect.stack()[0].function, etree.tostring(body)), flush=True)
         body.append(self.idp_saml_response_xml)
 
+        print("\nJJV A14 : %s body: ->%s<-" % (inspect.stack()[0].function, etree.tostring(body)), flush=True)
+
+        print("\nJJV A15 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
         self.sp_response_xml = envelope
 
     def send_sp_response(self):
