@@ -5,6 +5,7 @@ require 'net/http'
 require 'openssl'
 require 'uri'
 require 'nokogiri'
+require 'pp'
 
 module EcpDemo
 
@@ -22,6 +23,9 @@ module EcpDemo
   VALID_LOG_CATEGORIES    = %w[sp-resource message-info saml-message http-request-response http-content http-lowlevel].freeze
   DEFAULT_LOG_CATEGORIES  = %w[sp-resource message-info saml-message http-request-response].freeze
 
+  # FUTURE IDP_METADATA_FILE       = "/etc/httpd/saml2/idp-metadata.xml".freeze
+  IDP_METADATA_FILE       = "./idp-metadata.xml".freeze # JJV Temp testing
+
   class EcpFLowError < StandardError; end
 
   class EcpFlow
@@ -29,36 +33,22 @@ module EcpDemo
                 :idp_endpoint_uri, :idp_endpoint,
                 :user, :password, :idp_auth_method, :log_categories
 
-    attr_accessor :sp_resouce_http, :http_idp_endpoint, :paos_request_text, :paos_request_xml, :provider_name,
+    attr_accessor :sp_resource_http, :http_idp_endpoint, :paos_request_text, :paos_request_xml, :provider_name,
       :sp_response_consumer_url, :sp_message_id, :sp_is_passive, :sp_issuer, :sp_relay_state, :sp_authn_request_xml,
       :idp_response_text, :idp_response_xml, :idp_assertion_consumer_url, :idp_request_authenticated,
       :idp_saml_response_xml, :idp_saml_response_status_xml, :idp_saml_response_status_code,
       :idp_saml_response_status_code2, :idp_saml_response_status_msg, :idp_saml_response_status_detail,
-      :sp_response_xml
+      :sp_response_xml, :user_attrs
 
     def initialize(sp_resource, idp_endpoint, user, password, idp_auth_method, log_categories)
       # HTTP session used to perform HTTP request/response
 
       @sp_resource = sp_resource
-      @sp_resource_uri = URI.parse(sp_resource)
-      puts "sp_resource_uri.host                    ->#{sp_resource_uri.host}<-"
-      puts "sp_resource_uri.port                    ->#{sp_resource_uri.port}<-"
-      puts "sp_resource_uri.request_sp_resource_uri ->#{sp_resource_uri.request_uri}<-"
- 
-      @sp_resouce_http = Net::HTTP.new(sp_resource_uri.host, sp_resource_uri.port)
-      @sp_resouce_http.use_ssl = true
-      @sp_resouce_http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-  
       @idp_endpoint = idp_endpoint
-      @idp_endpoint_uri = URI.parse(@idp_endpoint)
-      puts "idp_endpoint_uri.host        ->#{idp_endpoint_uri.host}<-"
-      puts "idp_endpoint_uri.port        ->#{idp_endpoint_uri.port}<-"
-      puts "idp_endpoint_uri.request_uri ->#{idp_endpoint_uri.request_uri}<-"
- 
-      @idp_endpoint_http = Net::HTTP.new(idp_endpoint_uri.host, idp_endpoint_uri.port)
-  
+
       @user = user
       @password = password
+      @user_attrs = nil
       @idp_auth_method = idp_auth_method
       @log_categories = log_categories
   
@@ -99,20 +89,26 @@ module EcpDemo
       process_idp_response
       validate_idp_response
       build_sp_response
-
-      return 1 # JJV
-
-      send_sp_response
+      # JJV send_sp_response
+      @user_attrs = get_user_attrs
+      print_user_attrs
+      require 'pry'; binding.pry # JJV
     end
 
     def ecp_issues_request_to_sp
       puts "\n=== ECP Issues HTTP Request to Service Provider ==="
 
-      request = Net::HTTP::Get.new(sp_resource_uri.request_uri)
+      puts "JJV ZZZ 0.0 #{File.basename(__FILE__)} / #{__method__} @sp_resource ->#{@sp_resource}<-"
+      @sp_resource_uri = URI.parse(sp_resource)
+      @sp_resource_http = Net::HTTP.new(@sp_resource_uri.host, @sp_resource_uri.port)
+      @sp_resource_http.use_ssl = true
+      @sp_resource_http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      puts "JJV ZZZ 0.0 #{File.basename(__FILE__)} / #{__method__} @sp_resource_uri.request_uri ->#{@sp_resource_uri.request_uri}<-"
+      request = Net::HTTP::Get.new(@sp_resource_uri.request_uri)
       request["Accept"] = "text/html, application/vnd.paos+xml"
       request["PAOS"]   = 'ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"'
 
-      response = @sp_resouce_http.request(request)
+      response = @sp_resource_http.request(request)
 
       @paos_request_text = response.body
     end
@@ -139,6 +135,8 @@ module EcpDemo
       puts "\n=== ECP Determines Identity Provider ==="
       puts "    STUB. For now use value passed on the command line."
 
+     # JJV IDP_METADATA_FILE       = "/etc/httpd/saml2/idp-metadata.xml".freeze
+
       puts "Using IdP endpoint: ->#{idp_endpoint}<-"
     end
 
@@ -158,6 +156,10 @@ module EcpDemo
     def send_authn_request_to_idp
       puts "\n=== ECP sends <AuthnRequest> to IdP with authentication ==="
 
+      puts "JJV ZZZ 0.0 #{File.basename(__FILE__)} / #{__method__} @idp_endpoint ->#{@idp_endpoint}<-"
+      @idp_endpoint_uri = URI.parse(@idp_endpoint)
+      @idp_endpoint_http = Net::HTTP.new(@idp_endpoint_uri.host, @idp_endpoint_uri.port)
+  
       request = Net::HTTP::Post.new(@idp_endpoint)
 
       request["Content-Type"] = "text/xml"
@@ -210,86 +212,71 @@ module EcpDemo
     end
 
     def build_sp_response
-        puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+      puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
 
-        return unless @sp_response_xml.nil?
+      return unless @sp_response_xml.nil?
 
-        nsmap = @idp_response_xml.namespaces
+      nsmap = @idp_response_xml.namespaces
+      nsmap['xmlns:paos'] = NS_PAOS
+      nsmap['xmlns:ecp'] = NS_ECP
+      soap_ns = nsmap.detect { |n,v| v == NS_SOAP}.first.gsub("xmlns:","")
 
-        puts "JJV 001 #{File.basename(__FILE__)} / #{__method__} nsmap \n#{nsmap}"
+      puts "JJV 002 #{File.basename(__FILE__)} / #{__method__} nsmap \n#{nsmap}"
 
+      builder = Nokogiri::XML::Builder.new do |xml| 
+        xml[soap_ns].Envelope(nsmap) do |envelope|
+          envelope[soap_ns].Header do |header|
+            if @sp_message_id
+              header["paos"].Response("#{soap_ns}:actor" => SOAP_ACTOR,
+                                      "#{soap_ns}:mustUnderstand" => SOAP_MUST_UNDERSTAND,
+                                      "paos:refToMessageID" => @sp_message_id)
+            end
+            if @sp_relay_state
+              header["ecp"].RelayState(@sp_relay_state,
+                                       "#{soap_ns}:actor" => SOAP_ACTOR,
+                                       "#{soap_ns}:mustUnderstand" => SOAP_MUST_UNDERSTAND)
+            end
+          end # envelope
+          envelope[soap_ns].Body
+        end # xml
+      end # builder
 
-        # Add the namespaces we might insert into the response so they have
-        # a human readable name instead of anonymous indexed prefixes
-        nsmap['xmlns:paos'] = NS_PAOS
-        nsmap['xmlns:ecp'] = NS_ECP
-        soap_ns = nsmap.detect { |n,v| v == NS_SOAP}.first.gsub("xmlns:","")
+      builder.doc.xpath("//#{soap_ns}:Body").first  << @idp_saml_response_xml
 
-        require 'pry'; binding.pry # JJV
-
-        puts "JJV 002 #{File.basename(__FILE__)} / #{__method__} nsmap \n#{nsmap}"
-
-        builder = Nokogiri::XML::Builder.new do |xml| 
-          xml[soap_ns].Envelope(nsmap) { |envelope|
-            envelope[soap_ns].Header { |header|
-              if @sp_message_id
-                header["paos"].Response("#{soap_ns}:actor" => SOAP_ACTOR,
-                                        "#{soap_ns}:mustUnderstand" => SOAP_MUST_UNDERSTAND,
-                                        "paos:refToMessageID" => @sp_message_id)
-              end
-              if @sp_relay_state
-                header["ecp"].RelayState(@sp_relay_state,
-                                         "#{soap_ns}:actor" => SOAP_ACTOR,
-                                         "#{soap_ns}:mustUnderstand" => SOAP_MUST_UNDERSTAND)
-              end
-            } 
-          } 
-        end  
-
-        puts builder.to_xml
-
-        require 'pry'; binding.pry # JJV
-
-        puts builder.to_xml
-
-=begin
-        builder = Nokogiri::XML::Builder.new do |xml| 
-          xml['SOAP-ENV'].Envelope("xmlns:SOAP-ENV" => nsmap_str)
-          xml['SOAP-ENV'].Envelope("xmlns:SOAP-ENV" => nsmap_str)
-        end  
-
-        envelope = etree.Element(ns_name('soap','Envelope'), nsmap=nsmap)
-
-        # Do we have to add SOAP header blocks to the response?
-        if self.sp_message_id or self.sp_relay_state:
-            header = etree.SubElement(envelope, ns_name('soap', 'Header'))
-
-            # Add the <paos:Response> header block
-            if self.sp_message_id:
-                paos_response = etree.SubElement(header, ns_name('paos', 'Response'))
-                paos_response.set(ns_name('soap', 'actor'), SOAP_ACTOR)
-                paos_response.set(ns_name('soap', 'mustUnderstand'), SOAP_MUST_UNDERSTAND)
-                paos_response.set(ns_name('paos', 'refToMessageID'), self.sp_message_id)
-
-            # Add the <ecp:RelayState> header block
-            if self.sp_relay_state:
-                ecp_relay_state = etree.SubElement(header, ns_name('ecp', 'RelayState'))
-                ecp_relay_state.set(ns_name('soap', 'actor'), SOAP_ACTOR)
-                ecp_relay_state.set(ns_name('soap', 'mustUnderstand'), SOAP_MUST_UNDERSTAND)
-                ecp_relay_state.text = self.sp_relay_state
-
-        # Add the SOAP body received from the IdP to our response
-        body = etree.SubElement(envelope, ns_name('soap', 'Body'))
-        body.append(self.idp_saml_response_xml)
-
-        self.sp_response_xml = envelope
-=end
-      puts "JoeV is the coolest"
-
+      @sp_response_xml = builder.doc
     end
 
     def send_sp_response
-        puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+      puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
+      puts "\n=== Send PAOS response to SP, if successful SP resource is returned ==="
+
+      # JJV @sp_response_consumer_url = "https://joev-saml.jvlcek.redhat.com/saml2/paosResponse"
+
+      puts "=== PAOS response sent to SP ===\nSP Endpoint: #{@sp_response_consumer_url}"
+
+      sp_response_consumer_url_uri = URI.parse(@sp_response_consumer_url)
+
+      sp_response_consumer_url_http = Net::HTTP.new(sp_response_consumer_url_uri.host, sp_response_consumer_url_uri.port)
+      sp_response_consumer_url_http.use_ssl = true
+      sp_response_consumer_url_http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+      # JJV request = Net::HTTP::Post.new(@sp_response_consumer_url)
+      request = Net::HTTP::Post.new("/saml2/paosResponse")
+      request["Content-Type"] = "application/vnd.paos+xml"
+      request.body = @sp_response_xml.inner_html.encode('utf-8')
+
+      response = sp_response_consumer_url_http.request(request)
+
+      @sp_response_text = response.body
+
+      require 'pry'; binding.pry # JJV
+      puts "--- SP Resource ---\n#{@sp_response_text}"
+    end
+
+    def get_user_attrs
+      @user_attrs = @sp_response_xml.xpath("//saml:Attribute").each_with_object({}) { |n,h| h[n["Name"]] = n.text }
+      @user_attrs["groups"] = @sp_response_xml.xpath("//saml:Attribute[@Name='groups']").map(&:text)
+      @user_attrs
     end
 
     private
@@ -372,6 +359,10 @@ module EcpDemo
       puts "  SAML Response:\n%s\n #{@idp_saml_response_xml.to_s}" if log_categories.include?("saml-message")
     end
 
+    def print_user_attrs
+      @user_attrs.each { |n,v| printf "    %-13s %s\n", n, v }
+    end
+
     def pp_xml_to_string(root) # format_xml_from_object
       root.to_s
     end
@@ -385,6 +376,7 @@ if $PROGRAM_NAME == __FILE__
 
   sp_resource     = 'https://joev-saml/saml_login'
   idp_endpoint    = 'http://joev-keycloak:8080/auth/realms/miq/protocol/saml'
+  user            = 'jvlcek'
   user            = 'jvlcek'
   password        = 'smartvm'
   idp_auth_method = 'basic'

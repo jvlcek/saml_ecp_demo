@@ -134,13 +134,6 @@ def get_xml_element_text(context_node, required, xpath_expr, description=None):
     return data
 
 def build_soap_fault(fault_code, fault_string, detail=None):
-    '''
-    print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
-    print("JJV P01 : %s fault_code: ->%s<-"   % (inspect.stack()[0].function, fault_code),   flush=True)
-    print("JJV P01 : %s fault_string: ->%s<-" % (inspect.stack()[0].function, fault_string), flush=True)
-    print("JJV P01 : %s detail: ->%s<-"       % (inspect.stack()[0].function, detail),       flush=True)
-    '''
-
     'Build a SOAP Fault document and return it as a XML object.'
 
     envelope = etree.Element(ns_name('soap','Envelope'), nsmap={'soap': NS_SOAP})
@@ -154,24 +147,9 @@ def build_soap_fault(fault_code, fault_string, detail=None):
     fs = etree.SubElement(fault, 'faultstring')
     fs.text = fault_string
 
-    '''
-    print("\nJJV A01 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
-    print("JJV A02 : %s body:     ->%s<-" % (inspect.stack()[0].function, body), flush=True)
-    print("JJV A03 : %s fault:    ->%s<-" % (inspect.stack()[0].function, fault), flush=True)
-    print("JJV A04 : %s fc:       ->%s<-" % (inspect.stack()[0].function, fc), flush=True)
-    print("JJV A05 : %s fc.text:  ->%s<-" % (inspect.stack()[0].function, fc.text), flush=True)
-    print("JJV A06 : %s fs:       ->%s<-" % (inspect.stack()[0].function, fs), flush=True)
-    print("JJV A07 : %s fs.text:  ->%s<-" % (inspect.stack()[0].function, fs.text), flush=True)
-    '''
-
     if detail:
         d = etree.SubElement(fault, 'detail')
         d.text = detail
-        '''
-        print("JJV A08 : %s d.text\n ->%s<-" % (inspect.stack()[0].function, d.text), flush=True)
-
-        print("JJV A08 : %s envelope  ->\n%s<-" % (inspect.stack()[0].function, etree.tostring(envelope, encoding='unicode', pretty_print=True)), flush=True)
-        '''
 
     return envelope
 
@@ -423,9 +401,6 @@ class ECPFlow:
         self.process_idp_response()
         self.validate_idp_response()
         self.build_sp_response()
-
-        return 0 # JJV
-
         self.send_sp_response()
 
     def ecp_issues_request_to_sp(self):
@@ -452,11 +427,10 @@ class ECPFlow:
             'PAOS'   : 'ver="urn:liberty:paos:2003-08";"urn:oasis:names:tc:SAML:2.0:profiles:SSO:ecp"'
         }
 
+        LOG.info('%s\nsp_resource ->%s<-\n', description, self.sp_resource)
         response = self.session.get(self.sp_resource, verify=False, headers=headers)
-        LOG.info(format_http_request_response(response, self.log_categories,
-                                              msg=description))
+        LOG.info(format_http_request_response(response, self.log_categories, msg=description))
 
-        # print("JJV response.text : %s" % response.text, flush=True)
         self.paos_request_text = response.text
 
     def process_paos_request(self):
@@ -551,6 +525,7 @@ class ECPFlow:
 
         headers = { 'Content-Type': 'text/xml', }
 
+        LOG.info('%s\nidp_endpoint ->%s<-\n', description, self.idp_endpoint)
         response = self.session.post(self.idp_endpoint, verify=False, headers=headers, auth=auth, data=self.idp_request_text)
 
         self.idp_response_text = response.text
@@ -609,15 +584,7 @@ class ECPFlow:
         fails the ECP client sends a SOAP Fault message to the SP
         instead of a PAOS response.        '''
 
-        '''
-        print("JJV 002 : %s self.sp_response_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.sp_response_consumer_url), flush=True)
-        print("JJV 003 : %s self.idp_assertion_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.idp_assertion_consumer_url), flush=True)
-        self.idp_assertion_consumer_url = "https://joev-saml/samlbad/paosResponse"
-        print("JJV 004 : %s self.sp_response_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.sp_response_consumer_url), flush=True)
-        print("JJV 005 : %s self.idp_assertion_consumer_url \n ->%s<-" % (inspect.stack()[0].function, self.idp_assertion_consumer_url), flush=True)
-        '''
         if (self.sp_response_consumer_url != self.idp_assertion_consumer_url):
-            # print("JJV Invoked: %s self.sp_response_consumer_url != self.idp_assertion_consumer_url" % inspect.stack()[0].function, flush=True)
             err_msg = ( 'SP responseConsumerURL MUST match IdP AssertionConsumerServiceURL but responseConsumerURL="%s" AssertionConsumerServiceURL="%s"' %
                 (self.sp_response_consumer_url, self.idp_assertion_consumer_url))
 
@@ -696,8 +663,6 @@ class ECPFlow:
                 print("\nJJV A11 : %s paos_response: ->%s<-" % (inspect.stack()[0].function, etree.tostring(paos_response)), flush=True)
                 print("\nJJV A11.1 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
 
-                return # JJV
-
             # Add the <ecp:RelayState> header block
             if self.sp_relay_state:
                 ecp_relay_state = etree.SubElement(header, ns_name('ecp', 'RelayState'))
@@ -713,7 +678,7 @@ class ECPFlow:
 
         print("\nJJV A14 : %s body: ->%s<-" % (inspect.stack()[0].function, etree.tostring(body)), flush=True)
 
-        print("\nJJV A15 : %s envelope: ->%s<-" % (inspect.stack()[0].function, etree.tostring(envelope)), flush=True)
+        print("\nJJV A15 : %s envelope: \n%s" % (inspect.stack()[0].function, etree.tostring(envelope, encoding='unicode', pretty_print=True)), flush=True)
         self.sp_response_xml = envelope
 
     def send_sp_response(self):
@@ -730,23 +695,26 @@ class ECPFlow:
 
         description = banner('Send PAOS response to SP, if successful SP resource is returned')
 
-        LOG.info('%s\nSP Endpoint: %s\n' % (
-            banner('PAOS response sent to SP'), self.sp_response_consumer_url))
+        LOG.info('%s\nSP Endpoint: %s\n' % ( banner('PAOS response sent to SP'), self.sp_response_consumer_url))
+
         if 'saml-message' in self.log_categories:
             LOG.info('%s' % format_xml_from_object(self.sp_response_xml))
 
         sp_response_text = etree.tostring(self.sp_response_xml)
 
-        headers = {
-            'Content-Type': 'application/vnd.paos+xml',
-        }
 
-        response = self.session.post(self.sp_response_consumer_url, verify=False,
-                                     headers=headers,
-                                     data=sp_response_text)
+        headers = { 'Content-Type': 'application/vnd.paos+xml', }
 
-        LOG.info(format_http_request_response(response, self.log_categories,
-                                              description))
+        print("\nJJV B01 : %s SP Endpoint: \n%s" % (inspect.stack()[0].function, self.sp_response_consumer_url), flush=True)
+        print("\nJJV B02 : %s self.sp_response_xml : \n%s" % (inspect.stack()[0].function, self.sp_response_xml), flush=True)
+        print("\nJJV B03 : %s format_xml_from_object(self.sp_response_xml) : \n%s" % (inspect.stack()[0].function, format_xml_from_object(self.sp_response_xml)), flush=True)
+        print("\nJJV B04 : %s sp_response_text : \n%s" % (inspect.stack()[0].function, sp_response_text), flush=True)
+        print("\nJJV B05 : %s headers : \n%s" % (inspect.stack()[0].function, headers), flush=True)
+
+        response = self.session.post(self.sp_response_consumer_url, verify=False, headers=headers, data=sp_response_text)
+
+        print("\nJJV B06 : %s response.text : \n%s" % (inspect.stack()[0].function, response.text), flush=True)
+        LOG.info(format_http_request_response(response, self.log_categories, description))
 
         if 'sp-resource' in self.log_categories:
             LOG.info('%s\n%s', banner('SP Resource'), response.text)
