@@ -5,7 +5,6 @@ require 'net/http'
 require 'openssl'
 require 'uri'
 require 'nokogiri'
-require 'pp'
 
 module EcpDemo
 
@@ -40,17 +39,18 @@ module EcpDemo
       :idp_saml_response_status_code2, :idp_saml_response_status_msg, :idp_saml_response_status_detail,
       :sp_response_xml, :user_attrs
 
-    def initialize(sp_resource, idp_endpoint, user, password, idp_auth_method, log_categories)
+    def initialize(user, password, idp_auth_method)
       # HTTP session used to perform HTTP request/response
 
-      @sp_resource = sp_resource
-      @idp_endpoint = idp_endpoint
+      @sp_resource = "https://#{Socket.gethostname}/saml_login" # When the client is also the MiQ appliance and not my MAC :)
+      @sp_resource = 'https://joev-saml.jvlcek.redhat.com/saml_login'
+      @idp_endpoint = nil
 
       @user = user
       @password = password
       @user_attrs = nil
       @idp_auth_method = idp_auth_method
-      @log_categories = log_categories
+      @log_categories = %w[http-lowlevel http-content sp-resource http-request-response message-info]
   
       #### Collected Data ####
   
@@ -136,8 +136,9 @@ module EcpDemo
       puts "    STUB. For now use value passed on the command line."
 
      # JJV IDP_METADATA_FILE       = "/etc/httpd/saml2/idp-metadata.xml".freeze
+      @idp_endpoint = Nokogiri::XML(File.read(IDP_METADATA_FILE)).at_xpath("/*/*/*/*/@Location").value
 
-      puts "Using IdP endpoint: ->#{idp_endpoint}<-"
+      puts "Using IdP endpoint: ->#{@idp_endpoint}<-"
     end
 
     def build_authn_request_for_idp
@@ -249,6 +250,9 @@ module EcpDemo
     def send_sp_response
       puts "JJV 0.0 #{File.basename(__FILE__)} / #{__method__}"
       puts "\n=== Send PAOS response to SP, if successful SP resource is returned ==="
+
+      # JJV @sp_response_consumer_url = "https://joev-saml.jvlcek.redhat.com/saml2/paosResponse"
+
       puts "=== PAOS response sent to SP ===\nSP Endpoint: #{@sp_response_consumer_url}"
 
       sp_response_consumer_url_uri = URI.parse(@sp_response_consumer_url)
@@ -371,14 +375,10 @@ if $PROGRAM_NAME == __FILE__
 
    # require 'pry'; binding.pry # JJV
 
-  sp_resource     = 'https://joev-saml.jvlcek.redhat.com/saml_login'
-  idp_endpoint    = 'http://joev-keycloak:8080/auth/realms/miq/protocol/saml'
   user            = 'jvlcek'
   password        = 'smartvm'
   idp_auth_method = 'basic'
-  # JJV log_categories  = %w[http-lowlevel http-content sp-resource http-request-response message-info saml-message]
-  log_categories  = %w[http-lowlevel http-content sp-resource http-request-response message-info]
 
-  EcpDemo::EcpFlow.new(sp_resource, idp_endpoint, user, password, idp_auth_method, log_categories).run
+  EcpDemo::EcpFlow.new(user, password, idp_auth_method).run
 end
 
