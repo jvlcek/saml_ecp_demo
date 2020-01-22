@@ -387,8 +387,6 @@ class ECPFlow:
     def run(self):
         'Execute an ECP flow as a sequence of logical steps.'
 
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
-
         self.ecp_issues_request_to_sp()
         self.process_paos_request()
         self.determine_idp_endpoint()
@@ -400,7 +398,6 @@ class ECPFlow:
         self.send_sp_response()
 
     def ecp_issues_request_to_sp(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
         '''This is the first step in the ECP process. The ECP client wants
         a resource from the SP server but must authenticate first. The ECP
         client indicates it's intent to participate in the ECP flow by
@@ -423,13 +420,12 @@ class ECPFlow:
         }
 
         LOG.info('%s\nsp_resource ->%s<-\n', description, self.sp_resource)
-        response = self.session.get(self.sp_resource, verify=False, headers=headers)
+        response = self.session.get(self.sp_resource, verify=True, headers=headers)
         LOG.info(format_http_request_response(response, self.log_categories, msg=description))
 
         self.paos_request_text = response.text
 
     def process_paos_request(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
         description = banner('Process PAOS request from SP')
 
         self.paos_request_xml = etree.fromstring(self.paos_request_text)
@@ -445,7 +441,6 @@ class ECPFlow:
         LOG.info(self.pretty_print_paos_request_info(self.log_categories, description))
 
     def determine_idp_endpoint(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
         '''Stub method, can be expanded later. For now just use the
         value passed on the command line.'''
 
@@ -454,7 +449,6 @@ class ECPFlow:
         LOG.info('%s\nUsing IdP endpoint: %s\n', description, self.idp_endpoint)
 
     def build_authn_request_for_idp(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
         '''The ECP client will forward the AuthnRequest message received in
         the PAOS request to the IdP in the body of a SOAP
         envelope. Any SOAP header blocks received from the SP in the
@@ -482,7 +476,6 @@ class ECPFlow:
         self.idp_request_text = etree.tostring(self.idp_request_xml).decode()
 
     def send_authn_request_to_idp(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
         '''In the previous step we built the SOAP message containing the
         <AuthnRequest> to forward to the IdP. In this function we send
         it to the IdP. Unlike the interactive browser based SAML
@@ -517,7 +510,7 @@ class ECPFlow:
         headers = { 'Content-Type': 'text/xml', }
 
         LOG.info('%s\nidp_endpoint ->%s<-\n', description, self.idp_endpoint)
-        response = self.session.post(self.idp_endpoint, verify=False, headers=headers, auth=auth, data=self.idp_request_text)
+        response = self.session.post(self.idp_endpoint, verify=True, headers=headers, auth=auth, data=self.idp_request_text)
 
         self.idp_response_text = response.text
 
@@ -527,7 +520,6 @@ class ECPFlow:
             LOG.info('SOAP message from ECP to IdP\n%s' % format_xml_from_object(self.idp_request_xml))
 
     def process_idp_response(self):
-        print("JJV Invoked: %s" % inspect.stack()[0].function, flush=True)
         '''We've received a response from the IdP and must process it by
         extracting pieces of data to be used in later steps (or for
         diagnostic/demo purposes) and validating the response conforms
@@ -699,7 +691,7 @@ class ECPFlow:
         # JJV print("\nJJV B04 : %s sp_response_text : \n%s" % (inspect.stack()[0].function, sp_response_text), flush=True)
         # JJV print("\nJJV B05 : %s headers : \n%s" % (inspect.stack()[0].function, headers), flush=True)
 
-        response = self.session.post(self.sp_response_consumer_url, verify=False, headers=headers, data=sp_response_text)
+        response = self.session.post(self.sp_response_consumer_url, verify=True, headers=headers, data=sp_response_text)
 
         print("\nJJV B06 : %s response.text : \n%s" % (inspect.stack()[0].function, response.text), flush=True)
         LOG.info(format_http_request_response(response, self.log_categories, description))
@@ -839,7 +831,7 @@ def main():
         options.password = getpass.getpass('Enter password for "%s": '
                                            % (options.user))
 
-    print("JJV %s options: ->%s<-" % (inspect.stack()[0].function, options), flush=True)
+    print("JJV in %s options: ->%s<-" % (inspect.stack()[0].function, options), flush=True)
 
     setup_logging(options, options.log_categories)
 
